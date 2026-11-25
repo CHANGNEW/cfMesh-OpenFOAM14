@@ -387,7 +387,16 @@ bool refineBoundaryLayers::analyseLayers()
     }
 
     //- perform reduction over all processors
-    reduce(nLayersAtPatch, maxOp<labelList>());
+    //  OF14 port: reduce(List, maxOp<labelList>) no longer compiles because
+    //  max(List, List) is not defined in OpenFOAM-14 (ops.H instantiates it).
+    //  The patch list has the same size on every processor, so reduce the
+    //  entries one by one instead.
+    forAll(nLayersAtPatch, patchI)
+    {
+        label maxNLayers = nLayersAtPatch[patchI];
+        reduce(maxNLayers, maxOp<label>());
+        nLayersAtPatch[patchI] = maxNLayers;
+    }
 
     // CFMitch/shared-modern hard no-BL audit.
     // An explicitly disabled patch must resolve to <= 1 and may never
